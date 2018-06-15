@@ -34,7 +34,7 @@ const (
 	DefaultTimeout = 30 * time.Second
 	// DefaultConnections is the default amount of max open idle connections per
 	// target host.
-	DefaultConnections = 10000
+	DefaultConnections = 1000
 	// DefaultWorkers is the default initial number of workers used to carry an attack.
 	DefaultWorkers = 10
 	// NoFollow is the value when redirects are not followed but marked successful
