@@ -38,6 +38,9 @@ type (
 		// Errors is a set of unique errors returned by the targets during the attack.
 		Errors []string `json:"errors"`
 
+		// ErrorCount ...
+		ErrorCount map[string]uint
+
 		errors    map[string]struct{}
 		success   uint64
 		latencies *quantile.Estimator
@@ -102,6 +105,7 @@ func (m *Metrics) Add(r *Result) {
 	}
 
 	if r.Error != "" {
+		m.ErrorCount[r.Error]++
 		if _, ok := m.errors[r.Error]; !ok {
 			m.errors[r.Error] = struct{}{}
 			m.Errors = append(m.Errors, r.Error)
@@ -147,5 +151,9 @@ func (m *Metrics) init() {
 
 	if m.Errors == nil {
 		m.Errors = make([]string, 0)
+	}
+
+	if m.ErrorCount == nil {
+		m.ErrorCount = make(map[string]uint)
 	}
 }
