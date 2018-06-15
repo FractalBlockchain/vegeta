@@ -1,15 +1,18 @@
 package vegeta
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
+	"strings"
 	"sync"
 	"time"
 
+	"github.com/rs/dnscache"
 	"golang.org/x/net/http2"
 )
 
@@ -45,6 +48,24 @@ var (
 	DefaultTLSConfig = &tls.Config{InsecureSkipVerify: true}
 )
 
+// Cached DNS resolver
+var resolver = &dnscache.Resolver{}
+
+func dialContext(ctx context.Context, network string, addr string) (conn net.Conn, err error) {
+	separator := strings.LastIndex(addr, ":")
+	ips, err := resolver.LookupHost(ctx, addr[:separator])
+	if err != nil {
+		return nil, err
+	}
+	for _, ip := range ips {
+		conn, err = net.Dial(network, ip+addr[separator:])
+		if err == nil {
+			break
+		}
+	}
+	return
+}
+
 // NewAttacker returns a new Attacker with default options which are overridden
 // by the optionally provided opts.
 func NewAttacker(opts ...func(*Attacker)) *Attacker {
@@ -56,8 +77,9 @@ func NewAttacker(opts ...func(*Attacker)) *Attacker {
 	}
 	a.client = http.Client{
 		Transport: &http.Transport{
-			Proxy: http.ProxyFromEnvironment,
-			Dial:  a.dialer.Dial,
+			Proxy:                 http.ProxyFromEnvironment,
+			Dial:                  a.dialer.Dial,
+			DialContext:           dialContext,
 			ResponseHeaderTimeout: DefaultTimeout,
 			TLSClientConfig:       DefaultTLSConfig,
 			TLSHandshakeTimeout:   10 * time.Second,
